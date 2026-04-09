@@ -4,6 +4,8 @@ These rules govern the `kelshi-trade` research and paper-trading system.
 
 They are intended to be hard constraints, not soft suggestions.
 
+> Main trading rule: 少做、做窄、做有验证优势的；没 edge 就空仓；先想怎么死，再想赚多少。
+
 ## 1. Paper Only
 
 The system must remain paper-trading only.

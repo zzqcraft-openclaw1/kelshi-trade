@@ -11,6 +11,8 @@ Current scope is deliberately narrow:
 
 The system should estimate probabilities, compare them to market-implied pricing, and generate paper-trading decisions only when a defined research edge exists.
 
+> Main trading rule: 少做、做窄、做有验证优势的；没 edge 就空仓；先想怎么死，再想赚多少。
+
 ## Whitelist Scope
 
 The active market whitelist currently contains one category only:
