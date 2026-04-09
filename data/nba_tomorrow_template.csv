@@ -1,0 +1,7 @@
+game_date,league,away_team,home_team,start_time_utc,reference_game_id,candidate_market_type,category_in_scope,market_validated,model_side,model_prob,market_price,implied_prob,edge_pct,est_slippage_pct,net_edge_pct,liquidity_ok,spread_ok,news_checked,injury_notes,stake_units,simulated_action,rationale,status
+2026-04-10,NBA,Miami Heat,Toronto Raptors,2026-04-09T23:00:00Z,401811020,unassigned,true,false,,,,,,,,,,,,,pending-research
+2026-04-10,NBA,Chicago Bulls,Washington Wizards,2026-04-09T23:00:00Z,401811021,unassigned,true,false,,,,,,,,,,,,,pending-research
+2026-04-10,NBA,Indiana Pacers,Brooklyn Nets,2026-04-09T23:30:00Z,401811022,unassigned,true,false,,,,,,,,,,,,,pending-research
+2026-04-10,NBA,Boston Celtics,New York Knicks,2026-04-09T23:30:00Z,401811023,unassigned,true,false,,,,,,,,,,,,,pending-research
+2026-04-10,NBA,Philadelphia 76ers,Houston Rockets,2026-04-10T00:00:00Z,401811024,unassigned,true,false,,,,,,,,,,,,,pending-research
+2026-04-10,NBA,Los Angeles Lakers,Golden State Warriors,2026-04-10T02:00:00Z,401811025,unassigned,true,false,,,,,,,,,,,,,pending-research
