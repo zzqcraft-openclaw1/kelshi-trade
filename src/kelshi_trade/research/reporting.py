@@ -18,7 +18,7 @@ def export_review_report(candidates: list[CandidateReview], output_dir: str) -> 
     with csv_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["market_id", "matchup", "description", "start_time_utc", "market_type", "score", "priority", "rationale"],
+            fieldnames=["market_id", "matchup", "description", "start_time_utc", "market_type", "score", "priority", "model_probability_pct", "market_implied_probability_pct", "confidence_note", "rationale"],
         )
         writer.writeheader()
         for candidate in candidates:
@@ -31,6 +31,9 @@ def export_review_report(candidates: list[CandidateReview], output_dir: str) -> 
                     "market_type": candidate.market_type,
                     "score": candidate.score,
                     "priority": candidate.priority,
+                    "model_probability_pct": candidate.model_probability_pct,
+                    "market_implied_probability_pct": candidate.market_implied_probability_pct,
+                    "confidence_note": candidate.confidence_note,
                     "rationale": candidate.rationale,
                 }
             )

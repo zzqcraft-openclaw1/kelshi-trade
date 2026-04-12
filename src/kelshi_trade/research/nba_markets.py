@@ -20,6 +20,9 @@ class CandidateReview:
     rationale: str
     description: str = ""
     priority: str = "medium"
+    model_probability_pct: float | None = None
+    market_implied_probability_pct: float | None = None
+    confidence_note: str = "needs_data"
 
 
 TEAM_CODE_MAP = {
@@ -164,6 +167,9 @@ def render_top_candidates_markdown(candidates: list[CandidateReview]) -> str:
                 f"- Start: {candidate.start_time_utc}",
                 f"- Review score: {candidate.score}",
                 f"- Priority: {candidate.priority}",
+                f"- Model probability: {candidate.model_probability_pct if candidate.model_probability_pct is not None else 'needs_data'}",
+                f"- Market implied probability: {candidate.market_implied_probability_pct if candidate.market_implied_probability_pct is not None else 'n/a'}",
+                f"- Confidence note: {candidate.confidence_note}",
                 f"- Rationale: {candidate.rationale}",
                 "",
             ]
@@ -275,6 +281,16 @@ def decode_market_description(market: LiveNBAMarket) -> str:
     return market.market_id
 
 
+def implied_probability_pct(market: LiveNBAMarket) -> float | None:
+    if market.market_type != "game":
+        return None
+    if market.yes_ask and market.yes_ask > 0:
+        return round(market.yes_ask * 100, 2)
+    if market.yes_bid and market.yes_bid > 0:
+        return round(market.yes_bid * 100, 2)
+    return None
+
+
 def score_live_market_for_review(market: LiveNBAMarket) -> CandidateReview:
     spread_penalty = abs((market.yes_ask + market.no_bid) - 1.0) * 100 if market.yes_ask and market.no_bid else 10.0
     quote_bonus = 8.0 if (market.yes_ask > 0 or market.yes_bid > 0 or market.no_bid < 1.0 or market.no_ask < 1.0) else 0.0
@@ -299,6 +315,9 @@ def score_live_market_for_review(market: LiveNBAMarket) -> CandidateReview:
         rationale=rationale,
         description=decode_market_description(market),
         priority=priority,
+        model_probability_pct=None,
+        market_implied_probability_pct=implied_probability_pct(market),
+        confidence_note="needs_data",
     )
 
 
