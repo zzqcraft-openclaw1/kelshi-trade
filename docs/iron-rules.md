@@ -15,6 +15,9 @@ Rules:
 - no real-money execution mode
 - no production trading credentials used for execution
 - if execution mode is not explicitly `paper`, the system should fail closed
+- read-only authenticated market-data retrieval is allowed for research and paper-review workflows only
+- no order, execution, or account-changing endpoints may be used
+- no credential material may be printed, exported, or committed
 
 ## 2. Sports-Only Whitelist
 

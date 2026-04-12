@@ -8,6 +8,7 @@ Current scope is deliberately narrow:
 - paper-trading and simulation only
 - whitelist-gated market selection
 - **sports markets only**
+- read-only authenticated market-data retrieval is allowed only to support research and paper-review workflows
 
 The system should estimate probabilities, compare them to market-implied pricing, and generate paper-trading decisions only when a defined research edge exists.
 
