@@ -62,3 +62,19 @@ class Position:
     market_id: str
     size: int = 0
     avg_price: float = 0.0
+
+
+@dataclass(slots=True)
+class ResearchMarket:
+    market_id: str
+    reference_game_id: str
+    title: str
+    league: str
+    category: str
+    subcategory: str
+    matchup: str
+    start_time_utc: str
+    market_type: str
+    liquidity_score: float
+    spread_bps: int
+    validated: bool = False

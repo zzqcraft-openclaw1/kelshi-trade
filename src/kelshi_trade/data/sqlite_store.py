@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 
-from kelshi_trade.models import Position, Quote
+from kelshi_trade.models import Position, Quote, ResearchMarket
 
 
 class SQLiteStore:
@@ -32,6 +32,24 @@ class SQLiteStore:
                     market_id TEXT PRIMARY KEY,
                     size INTEGER NOT NULL,
                     avg_price REAL NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS research_markets (
+                    market_id TEXT PRIMARY KEY,
+                    reference_game_id TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    league TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    subcategory TEXT NOT NULL,
+                    matchup TEXT NOT NULL,
+                    start_time_utc TEXT NOT NULL,
+                    market_type TEXT NOT NULL,
+                    liquidity_score REAL NOT NULL,
+                    spread_bps INTEGER NOT NULL,
+                    validated INTEGER NOT NULL
                 )
                 """
             )
@@ -75,3 +93,43 @@ class SQLiteStore:
         if row is None:
             return Position(market_id=market_id)
         return Position(market_id=row[0], size=row[1], avg_price=row[2])
+
+    def save_research_markets(self, markets: list[ResearchMarket]) -> None:
+        with self._connect() as conn:
+            conn.executemany(
+                """
+                INSERT INTO research_markets (
+                    market_id, reference_game_id, title, league, category, subcategory,
+                    matchup, start_time_utc, market_type, liquidity_score, spread_bps, validated
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(market_id) DO UPDATE SET
+                    reference_game_id = excluded.reference_game_id,
+                    title = excluded.title,
+                    league = excluded.league,
+                    category = excluded.category,
+                    subcategory = excluded.subcategory,
+                    matchup = excluded.matchup,
+                    start_time_utc = excluded.start_time_utc,
+                    market_type = excluded.market_type,
+                    liquidity_score = excluded.liquidity_score,
+                    spread_bps = excluded.spread_bps,
+                    validated = excluded.validated
+                """,
+                [
+                    (
+                        market.market_id,
+                        market.reference_game_id,
+                        market.title,
+                        market.league,
+                        market.category,
+                        market.subcategory,
+                        market.matchup,
+                        market.start_time_utc,
+                        market.market_type,
+                        market.liquidity_score,
+                        market.spread_bps,
+                        int(market.validated),
+                    )
+                    for market in markets
+                ],
+            )

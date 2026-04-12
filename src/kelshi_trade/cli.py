@@ -3,6 +3,12 @@ import typer
 from kelshi_trade.config import settings
 from kelshi_trade.data.mock import MockMarketDataSource
 from kelshi_trade.paper_trader.engine import PaperEngine, build_store, run_paper_demo
+from kelshi_trade.research.nba_markets import (
+    MockNBAMarketSource,
+    filter_nba_markets,
+    render_top_candidates_markdown,
+    score_market_for_review,
+)
 from kelshi_trade.risk.rules import RiskLimits
 
 app = typer.Typer(help="kelshi-trade CLI")
@@ -51,6 +57,38 @@ def paper_demo() -> None:
     """Run a tiny paper-trading demo."""
     result = run_paper_demo()
     typer.echo(result)
+
+
+@app.command("sync-nba-markets")
+def sync_nba_markets(
+    slate_csv: str = "data/nba_tomorrow_template.csv",
+) -> None:
+    """Load research-only NBA market candidates from the seeded slate file."""
+    source = MockNBAMarketSource(slate_csv)
+    markets = source.load_markets()
+    allowed, blocked = filter_nba_markets(markets)
+    store = build_store()
+    store.save_research_markets(allowed)
+    typer.echo(f"synced {len(allowed)} research-only NBA market candidates")
+    if blocked:
+        typer.echo(f"blocked {len(blocked)} candidates during sync")
+
+
+@app.command("report-top-nba")
+def report_top_nba(
+    slate_csv: str = "data/nba_tomorrow_template.csv",
+    top: int = 3,
+) -> None:
+    """Generate a research-only top-candidate review list for NBA markets."""
+    source = MockNBAMarketSource(slate_csv)
+    markets = source.load_markets()
+    allowed, blocked = filter_nba_markets(markets)
+    scored = sorted((score_market_for_review(m) for m in allowed), key=lambda c: c.score, reverse=True)
+    typer.echo(render_top_candidates_markdown(scored[:top]))
+    if blocked:
+        typer.echo("\nBlocked markets:")
+        for item in blocked:
+            typer.echo(f"- {item}")
 
 
 if __name__ == "__main__":
