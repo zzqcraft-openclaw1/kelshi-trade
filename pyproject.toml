@@ -14,6 +14,8 @@ dependencies = [
   "pydantic-settings>=2.2",
   "typer>=0.12",
   "rich>=13.7",
+  "requests>=2.32",
+  "cryptography>=45.0",
 ]
 
 [project.optional-dependencies]

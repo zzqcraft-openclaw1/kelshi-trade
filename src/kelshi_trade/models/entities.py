@@ -78,3 +78,22 @@ class ResearchMarket:
     liquidity_score: float
     spread_bps: int
     validated: bool = False
+
+
+@dataclass(slots=True)
+class LiveNBAMarket:
+    market_id: str
+    event_ticker: str
+    title: str
+    matchup: str
+    start_time_utc: str
+    market_type: str
+    yes_bid: float
+    yes_ask: float
+    no_bid: float
+    no_ask: float
+    liquidity: float
+    volume: float
+    status: str
+    is_bundle: bool
+    raw: dict
