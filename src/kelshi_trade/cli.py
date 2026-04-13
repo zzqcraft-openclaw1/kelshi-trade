@@ -2,6 +2,7 @@ import typer
 
 from kelshi_trade.client.kalshi import KalshiReadOnlyClient
 from kelshi_trade.config import settings
+from kelshi_trade.forecasting.pipeline import run_forecast_pipeline
 from kelshi_trade.data.mock import MockMarketDataSource
 from kelshi_trade.paper_trader.engine import PaperEngine, build_store, run_paper_demo
 from kelshi_trade.research import export_review_report
@@ -166,6 +167,26 @@ def report_kalshi_nba_review(
         typer.echo(f"Exported best-per-game report: {best_game_path}")
         summary_path = export_summary_by_game(best_by_game_and_type(working), out)
         typer.echo(f"Exported summary-by-game report: {summary_path}")
+
+
+@app.command("report-kalshi-nba-forecast")
+def report_kalshi_nba_forecast(
+    raw_json: str = "var/kalshi_raw_markets.json",
+    matchup: str | None = None,
+    top: int = 10,
+) -> None:
+    """Run the paper-only forecast scaffold over extracted NBA markets."""
+    markets = load_live_nba_markets(raw_json)
+    allowed, _ = filter_live_nba_markets(markets)
+    if matchup:
+        allowed = [m for m in allowed if m.matchup == matchup]
+    forecasts = run_forecast_pipeline(allowed)
+    shown = 0
+    for forecast in forecasts:
+        typer.echo(f"{forecast.matchup} | {forecast.market_id} | {forecast.market_type} | predicted={forecast.predicted_probability_pct if forecast.predicted_probability_pct is not None else 'needs_data'} | implied={forecast.market_implied_probability_pct if forecast.market_implied_probability_pct is not None else 'n/a'} | confidence={forecast.confidence} | rationale={forecast.rationale}")
+        shown += 1
+        if shown >= top:
+            break
 
 
 if __name__ == "__main__":
