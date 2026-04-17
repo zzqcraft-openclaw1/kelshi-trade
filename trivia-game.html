@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visitor Trivia Game</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .card {
+      width: 100%;
+      max-width: 720px;
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+      text-align: center;
+    }
+
+    h1 {
+      color: #222;
+      margin-bottom: 10px;
+      font-size: 2rem;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    .meta {
+      display: inline-block;
+      margin-bottom: 18px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: #eef1f7;
+      color: #555;
+      font-size: 0.95rem;
+    }
+
+    .category {
+      display: none;
+      margin-bottom: 14px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #667eea;
+      color: white;
+      font-size: 0.8rem;
+      font-weight: bold;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+
+    .panel {
+      min-height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      border-radius: 16px;
+      border: 2px solid #e5e7eb;
+      background: #f8fafc;
+      margin-bottom: 18px;
+    }
+
+    .question {
+      font-size: 1.35rem;
+      line-height: 1.5;
+      color: #222;
+    }
+
+    .placeholder {
+      color: #888;
+      font-style: italic;
+    }
+
+    .answer-box {
+      display: none;
+      margin-bottom: 18px;
+      padding: 20px;
+      border-radius: 16px;
+      border: 2px solid #22c55e;
+      background: #dcfce7;
+    }
+
+    .answer-box.show {
+      display: block;
+    }
+
+    .answer-label {
+      font-size: 0.8rem;
+      color: #166534;
+      font-weight: bold;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .answer {
+      color: #166534;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 14px 24px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .shuffle-btn {
+      background: #4f46e5;
+      color: white;
+    }
+
+    .answer-btn {
+      background: #16a34a;
+      color: white;
+    }
+
+    .answer-btn:disabled {
+      background: #bdbdbd;
+      cursor: not-allowed;
+    }
+
+    .hint {
+      margin-top: 16px;
+      font-size: 0.85rem;
+      color: #777;
+    }
+
+    @media (max-width: 560px) {
+      .card {
+        padding: 22px;
+      }
+
+      .question {
+        font-size: 1.15rem;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎯 Visitor Trivia</h1>
+    <p class="subtitle">Offline trivia game with random questions</p>
+
+    <div class="meta" id="counter">Ready with 20 questions</div>
+    <div class="category" id="category"></div>
+
+    <div class="panel">
+      <div class="question" id="questionText">
+        <span class="placeholder">Press “New Question” to start.</span>
+      </div>
+    </div>
+
+    <div class="answer-box" id="answerBox">
+      <div class="answer-label">Answer</div>
+      <div class="answer" id="answerText"></div>
+    </div>
+
+    <div class="buttons">
+      <button class="shuffle-btn" onclick="showRandomQuestion()">🎲 New Question</button>
+      <button class="answer-btn" id="revealBtn" onclick="revealAnswer()" disabled>👁 Reveal Answer</button>
+    </div>
+
+    <div class="hint">Tip: works fully offline in one HTML file.</div>
+  </div>
+
+  <script>
+    const questions = [
+      { category: "Science", question: "What is the chemical symbol for gold?", answer: "Au" },
+      { category: "Geography", question: "What is the capital city of Japan?", answer: "Tokyo" },
+      { category: "History", question: "In which year did the Titanic sink?", answer: "1912" },
+      { category: "Nature", question: "What is the largest mammal in the world?", answer: "Blue whale" },
+      { category: "Arts", question: "Who painted the Mona Lisa?", answer: "Leonardo da Vinci" },
+      { category: "Science", question: "How many bones are in the adult human body?", answer: "206" },
+      { category: "Geography", question: "What is the longest river in the world?", answer: "The Nile River" },
+      { category: "History", question: "Who was the first person to walk on the moon?", answer: "Neil Armstrong" },
+      { category: "Technology", question: "What does HTTP stand for?", answer: "HyperText Transfer Protocol" },
+      { category: "Nature", question: "How many legs does a spider have?", answer: "8" },
+      { category: "Science", question: "What planet is known as the Red Planet?", answer: "Mars" },
+      { category: "Geography", question: "What is the largest ocean on Earth?", answer: "Pacific Ocean" },
+      { category: "History", question: "Which ancient wonder still exists today?", answer: "The Great Pyramid of Giza" },
+      { category: "Arts", question: "Who wrote Romeo and Juliet?", answer: "William Shakespeare" },
+      { category: "Sports", question: "How many players are on a soccer team on the field?", answer: "11" },
+      { category: "Science", question: "What gas do plants absorb from the air?", answer: "Carbon dioxide" },
+      { category: "Technology", question: "Which company created the iPhone?", answer: "Apple" },
+      { category: "Nature", question: "What is the tallest tree species in the world?", answer: "Coast redwood" },
+      { category: "Geography", question: "What is the smallest country in the world?", answer: "Vatican City" },
+      { category: "Music", question: "Who is known as the King of Pop?", answer: "Michael Jackson" }
+    ];
+
+    let currentIndex = -1;
+
+    function showRandomQuestion() {
+      const answerBox = document.getElementById('answerBox');
+      const revealBtn = document.getElementById('revealBtn');
+      const questionText = document.getElementById('questionText');
+      const answerText = document.getElementById('answerText');
+      const counter = document.getElementById('counter');
+      const category = document.getElementById('category');
+
+      let nextIndex;
+      do {
+        nextIndex = Math.floor(Math.random() * questions.length);
+      } while (questions.length > 1 && nextIndex === currentIndex);
+
+      currentIndex = nextIndex;
+      const item = questions[currentIndex];
+
+      questionText.textContent = item.question;
+      answerText.textContent = item.answer;
+      category.textContent = item.category;
+      category.style.display = 'inline-block';
+      counter.textContent = `Showing random question from ${questions.length} total`;
+      answerBox.classList.remove('show');
+      revealBtn.disabled = false;
+    }
+
+    function revealAnswer() {
+      if (currentIndex === -1) return;
+      document.getElementById('answerBox').classList.add('show');
+    }
+  </script>
+</body>
+</html>
