@@ -1,0 +1,29 @@
+project:
+  name: nba-win-prob
+  target: home_win
+  probability_column: home_win_prob
+
+data:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  training_table: data/processed/training_table.csv
+
+features:
+  rolling_windows: [5, 10]
+  include_season_to_date: true
+  include_home_away_splits: true
+  include_rest_features: true
+  include_back_to_back: true
+  include_opponent_strength_proxy: true
+
+model:
+  kind: logistic_regression
+  params:
+    C: 1.0
+    max_iter: 1000
+    class_weight: balanced
+
+evaluation:
+  train_seasons: [2021, 2022, 2023]
+  test_seasons: [2024]
+  metrics: [log_loss, brier_score, roc_auc, accuracy]
