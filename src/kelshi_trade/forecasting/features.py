@@ -25,5 +25,9 @@ def build_feature_row(market: LiveNBAMarket) -> FeatureRow:
         liquidity=market.liquidity,
         volume=market.volume,
         spread_bps=spread_bps,
+        yes_bid_pct=round(market.yes_bid * 100, 2) if market.yes_bid is not None else None,
+        yes_ask_pct=round(market.yes_ask * 100, 2) if market.yes_ask is not None else None,
+        no_bid_pct=round(market.no_bid * 100, 2) if market.no_bid is not None else None,
+        no_ask_pct=round(market.no_ask * 100, 2) if market.no_ask is not None else None,
         missing_fields=missing,
     )

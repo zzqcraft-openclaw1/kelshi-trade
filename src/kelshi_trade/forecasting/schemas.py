@@ -20,6 +20,10 @@ class FeatureRow:
     liquidity: float | None = None
     volume: float | None = None
     spread_bps: float | None = None
+    yes_bid_pct: float | None = None
+    yes_ask_pct: float | None = None
+    no_bid_pct: float | None = None
+    no_ask_pct: float | None = None
     recent_price_move_pct: float | None = None
     rest_edge_note: str | None = None
     injury_note: str | None = None
