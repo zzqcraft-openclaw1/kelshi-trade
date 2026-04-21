@@ -1,5 +1,5 @@
 from kelshi_trade.forecasting.features import build_feature_row
-from kelshi_trade.forecasting.pipeline import run_forecast_pipeline
+from kelshi_trade.forecasting.pipeline import run_forecast_pipeline, select_game_markets
 from kelshi_trade.models import LiveNBAMarket
 
 
@@ -47,12 +47,29 @@ def test_run_forecast_pipeline_returns_adjusted_game_output() -> None:
     assert "quote-mid adjustment -0.52 pts" in outputs[0].rationale
 
 
+def test_select_game_markets_keeps_only_game_markets() -> None:
+    game_market = make_market(market_type="game")
+    non_game_market = make_market(market_type="total")
+    selected = select_game_markets([game_market, non_game_market])
+    assert selected == [game_market]
+
+
 def test_run_forecast_pipeline_withholds_non_game_markets() -> None:
     outputs = run_forecast_pipeline([make_market(market_type="total")])
     assert len(outputs) == 1
     assert outputs[0].predicted_probability_pct is None
     assert outputs[0].confidence == "needs_data"
     assert "withholds non-game NBA markets" in outputs[0].rationale
+
+
+def test_run_forecast_pipeline_withholds_game_market_without_implied_probability() -> None:
+    outputs = run_forecast_pipeline([make_market(yes_bid=0.0, yes_ask=0.0, no_bid=0.51, no_ask=0.55)])
+    assert len(outputs) == 1
+    assert outputs[0].market_type == "game"
+    assert outputs[0].predicted_probability_pct is None
+    assert outputs[0].market_implied_probability_pct is None
+    assert outputs[0].confidence == "needs_data"
+    assert "baseline forecast withheld" in outputs[0].rationale
 
 
 def test_run_forecast_pipeline_fails_soft_when_quote_inputs_are_incomplete() -> None:

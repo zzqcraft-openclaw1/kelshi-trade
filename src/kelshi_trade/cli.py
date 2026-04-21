@@ -2,7 +2,7 @@ import typer
 
 from kelshi_trade.client.kalshi import KalshiReadOnlyClient
 from kelshi_trade.config import settings
-from kelshi_trade.forecasting.pipeline import run_forecast_pipeline
+from kelshi_trade.forecasting.pipeline import run_forecast_pipeline, select_game_markets
 from kelshi_trade.data.mock import MockMarketDataSource
 from kelshi_trade.paper_trader.engine import PaperEngine, build_store, run_paper_demo
 from kelshi_trade.research import export_review_report
@@ -178,6 +178,7 @@ def report_kalshi_nba_forecast(
     """Run the paper-only forecast scaffold over extracted NBA markets."""
     markets = load_live_nba_markets(raw_json)
     allowed, _ = filter_live_nba_markets(markets)
+    allowed = select_game_markets(allowed)
     if matchup:
         allowed = [m for m in allowed if m.matchup == matchup]
     forecasts = run_forecast_pipeline(allowed)
