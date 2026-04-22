@@ -1,7 +1,7 @@
 import typer
 
 from kelshi_trade.client.kalshi import KalshiReadOnlyClient
-from kelshi_trade.config import settings
+from kelshi_trade.config import get_settings
 from kelshi_trade.forecasting.pipeline import run_forecast_pipeline, select_game_markets
 from kelshi_trade.data.mock import MockMarketDataSource
 from kelshi_trade.paper_trader.engine import PaperEngine, build_store, run_paper_demo
@@ -22,6 +22,7 @@ from kelshi_trade.research.nba_markets import (
 )
 from kelshi_trade.research.reporting import export_best_per_game_report, export_split_review_reports, export_summary_by_game
 from kelshi_trade.risk.rules import RiskLimits
+from kelshi_trade.workflow import doctor_ok, run_doctor, run_nba_paper_review
 
 app = typer.Typer(help="kelshi-trade CLI")
 
@@ -29,9 +30,24 @@ app = typer.Typer(help="kelshi-trade CLI")
 @app.command()
 def status() -> None:
     """Show basic project status."""
+    settings = get_settings()
     typer.echo(
         f"kelshi-trade scaffold is ready | env={settings.environment} db={settings.resolved_db_path()} paper_only={settings.paper_only}"
     )
+
+
+@app.command()
+def doctor() -> None:
+    """Run paper-only workflow preflight checks."""
+    settings = get_settings()
+    checks = run_doctor(settings)
+    for check in checks:
+        status = "OK" if check.ok else "FAIL"
+        typer.echo(f"[{status}] {check.name}: {check.detail}")
+    if doctor_ok(checks):
+        typer.echo("doctor passed: paper-only NBA review workflow looks ready")
+        return
+    raise typer.Exit(code=1)
 
 
 @app.command("capture-quotes")
@@ -47,6 +63,7 @@ def capture_quotes(market_id: str = "demo") -> None:
 @app.command("run-strategy")
 def run_strategy(market_id: str = "demo") -> None:
     """Run one paper-engine step using mock data."""
+    settings = get_settings()
     source = MockMarketDataSource()
     store = build_store()
     engine = PaperEngine(store=store, limits=RiskLimits(paper_only=settings.paper_only))
@@ -116,6 +133,7 @@ def sync_kalshi_markets(
     pages: int = 1,
 ) -> None:
     """Fetch Kalshi markets in read-only mode and dump the raw response for research use."""
+    settings = get_settings()
     if not settings.paper_only:
         raise typer.BadParameter("paper_only must remain enabled for read-only research sync")
     if not settings.kalshi_api_key_id or not settings.kalshi_private_key_path:
@@ -188,6 +206,42 @@ def report_kalshi_nba_forecast(
         shown += 1
         if shown >= top:
             break
+
+
+@app.command("run-nba-paper-review")
+def run_nba_review_command(
+    top: int = 10,
+    hours_ahead: int | None = None,
+    include_forecast: bool = True,
+    refresh_snapshot: bool = False,
+    limit: int = 100,
+    pages: int = 1,
+) -> None:
+    """Run the one-shot daily NBA paper-review workflow."""
+    settings = get_settings()
+    try:
+        artifacts = run_nba_paper_review(
+            settings,
+            top=top,
+            hours_ahead=hours_ahead,
+            include_forecast=include_forecast,
+            refresh_snapshot=refresh_snapshot,
+            limit=limit,
+            pages=pages,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    typer.echo(f"run_id={artifacts.run_id}")
+    typer.echo(f"reports_dir={artifacts.reports_dir}")
+    typer.echo(f"state_dir={artifacts.state_dir}")
+    typer.echo(f"raw_snapshot={artifacts.raw_snapshot_path}")
+    typer.echo(f"manifest={artifacts.manifest_path}")
+    for name, count in artifacts.summary_counts.items():
+        typer.echo(f"{name}={count}")
+    if artifacts.forecast_path:
+        typer.echo(f"forecast={artifacts.forecast_path}")
+    typer.echo("paper-only research run complete")
 
 
 if __name__ == "__main__":

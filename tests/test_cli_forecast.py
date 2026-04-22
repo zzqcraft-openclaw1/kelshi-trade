@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from typer.testing import CliRunner
 
 from kelshi_trade.cli import app
@@ -67,3 +70,39 @@ def test_report_kalshi_nba_forecast_handles_missing_game_implied_probability_cle
     assert result.exit_code == 0
     assert "KXNBAGAME-26APR12UTALAL-LAL | game | predicted=needs_data | implied=n/a | confidence=needs_data" in result.stdout
     assert "baseline forecast withheld" in result.stdout
+
+
+def test_doctor_command_passes_with_local_snapshot(tmp_path, monkeypatch) -> None:
+    raw_json = tmp_path / "var" / "kalshi_raw_markets.json"
+    raw_json.parent.mkdir(parents=True, exist_ok=True)
+    raw_json.write_text(json.dumps(MINIMAL_RAW_SNAPSHOT), encoding="utf-8")
+    monkeypatch.setenv("KELSHI_PAPER_ONLY", "true")
+    monkeypatch.setenv("KELSHI_DB_PATH", str(tmp_path / "var" / "kelshi_trade.db"))
+    monkeypatch.setenv("KELSHI_REPORTS_PATH", str(tmp_path / "reports"))
+    monkeypatch.setenv("KELSHI_VAR_PATH", str(tmp_path / "var"))
+    monkeypatch.setenv("KELSHI_RAW_SNAPSHOT_PATH", str(raw_json))
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert result.exit_code == 0
+    assert "doctor passed" in result.stdout
+    assert "[OK] market_snapshot_source" in result.stdout
+
+
+def test_run_nba_paper_review_command_writes_run_artifacts(tmp_path, monkeypatch) -> None:
+    raw_json = tmp_path / "var" / "kalshi_raw_markets.json"
+    raw_json.parent.mkdir(parents=True, exist_ok=True)
+    raw_json.write_text(json.dumps(MINIMAL_RAW_SNAPSHOT), encoding="utf-8")
+    monkeypatch.setenv("KELSHI_PAPER_ONLY", "true")
+    monkeypatch.setenv("KELSHI_DB_PATH", str(tmp_path / "var" / "kelshi_trade.db"))
+    monkeypatch.setenv("KELSHI_REPORTS_PATH", str(tmp_path / "reports"))
+    monkeypatch.setenv("KELSHI_VAR_PATH", str(tmp_path / "var"))
+    monkeypatch.setenv("KELSHI_RAW_SNAPSHOT_PATH", str(raw_json))
+
+    result = runner.invoke(app, ["run-nba-paper-review", "--top", "5"])
+
+    assert result.exit_code == 0
+    assert "paper-only research run complete" in result.stdout
+    manifest_line = next(line for line in result.stdout.splitlines() if line.startswith("manifest="))
+    manifest_path = Path(manifest_line.split("=", 1)[1])
+    assert manifest_path.exists()
