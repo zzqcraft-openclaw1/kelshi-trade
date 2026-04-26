@@ -71,6 +71,9 @@ def test_run_nba_paper_review_creates_manifest_and_reports(tmp_path) -> None:
     assert manifest["counts"]["review_candidates_exported"] == 2
     assert Path(artifacts.raw_snapshot_path).exists()
     assert Path(artifacts.forecast_path).exists()
+    forecast_payload = json.loads(Path(artifacts.forecast_path).read_text(encoding="utf-8"))
+    assert forecast_payload[0]["recommendation"] == "pass"
+    assert forecast_payload[0]["surfaced_edge_pct"] == 0.0
     assert Path(artifacts.reports_dir, "nba_review_report.md").exists()
     assert Path(artifacts.reports_dir, "nba_review_report.csv").exists()
     assert Path(artifacts.reports_dir, "nba_review_best_per_game.md").exists()

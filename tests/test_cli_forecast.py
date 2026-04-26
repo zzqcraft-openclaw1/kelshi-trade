@@ -32,12 +32,14 @@ MINIMAL_RAW_SNAPSHOT = {
 
 def test_report_kalshi_nba_forecast_emits_only_game_markets(tmp_path) -> None:
     raw_json = tmp_path / "kalshi_raw_markets.json"
-    raw_json.write_text(__import__("json").dumps(MINIMAL_RAW_SNAPSHOT), encoding="utf-8")
+    raw_json.write_text(json.dumps(MINIMAL_RAW_SNAPSHOT), encoding="utf-8")
 
     result = runner.invoke(app, ["report-kalshi-nba-forecast", "--raw-json", str(raw_json)])
 
     assert result.exit_code == 0
     assert "KXNBAGAME-26APR12UTALAL-LAL | game |" in result.stdout
+    assert "recommendation=pass" in result.stdout
+    assert "surfaced_edge=0.0" in result.stdout
     assert "KXNBATOTAL-26APR12UTALAL-228" not in result.stdout
     assert "| total |" not in result.stdout
 
@@ -63,13 +65,43 @@ def test_report_kalshi_nba_forecast_handles_missing_game_implied_probability_cle
             }
         ]
     }
-    raw_json.write_text(__import__("json").dumps(payload), encoding="utf-8")
+    raw_json.write_text(json.dumps(payload), encoding="utf-8")
 
     result = runner.invoke(app, ["report-kalshi-nba-forecast", "--raw-json", str(raw_json)])
 
     assert result.exit_code == 0
-    assert "KXNBAGAME-26APR12UTALAL-LAL | game | predicted=needs_data | implied=n/a | confidence=needs_data" in result.stdout
+    assert "KXNBAGAME-26APR12UTALAL-LAL | game | predicted=needs_data | implied=n/a | edge=n/a | surfaced_edge=n/a | recommendation=withheld | confidence=needs_data" in result.stdout
     assert "baseline forecast withheld" in result.stdout
+
+
+def test_report_kalshi_nba_forecast_withholds_extreme_market_from_cli(tmp_path) -> None:
+    raw_json = tmp_path / "kalshi_raw_markets.json"
+    payload = {
+        "markets": [
+            {
+                "ticker": "bundle-3",
+                "status": "active",
+                "expected_expiration_time": "2026-04-13T04:00:00Z",
+                "yes_bid_dollars": 0.98,
+                "yes_ask_dollars": 0.98,
+                "no_bid_dollars": 0.01,
+                "no_ask_dollars": 0.02,
+                "liquidity_dollars": 50.0,
+                "volume_fp": 50.0,
+                "custom_strike": {
+                    "Associated Events": "KXNBAGAME-26APR12UTALAL",
+                    "Associated Markets": "KXNBAGAME-26APR12UTALAL-LAL",
+                },
+            }
+        ]
+    }
+    raw_json.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = runner.invoke(app, ["report-kalshi-nba-forecast", "--raw-json", str(raw_json)])
+
+    assert result.exit_code == 0
+    assert "recommendation=withheld | confidence=guardrail" in result.stdout
+    assert "extreme guardrail" in result.stdout
 
 
 def test_doctor_command_passes_with_local_snapshot(tmp_path, monkeypatch) -> None:

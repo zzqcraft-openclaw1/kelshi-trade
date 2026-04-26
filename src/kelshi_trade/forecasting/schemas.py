@@ -42,5 +42,7 @@ class ForecastOutput:
     baseline_probability_pct: float | None = None
     market_implied_probability_pct: float | None = None
     estimated_edge_pct: float | None = None
+    surfaced_edge_pct: float | None = None
     confidence: str = "needs_data"
+    recommendation: str = "withheld"
     rationale: str = "paper-only baseline forecast scaffold"

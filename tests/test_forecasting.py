@@ -36,7 +36,7 @@ def test_build_feature_row_withholds_implied_probability_for_non_game_market() -
     assert "market_implied_probability_pct" in row.missing_fields
 
 
-def test_run_forecast_pipeline_returns_adjusted_game_output() -> None:
+def test_run_forecast_pipeline_returns_adjusted_game_output_with_pass_label_for_tiny_edge() -> None:
     outputs = run_forecast_pipeline([make_market()])
     assert len(outputs) == 1
     assert outputs[0].market_id == "KXNBAGAME-TEST-LAL"
@@ -44,7 +44,21 @@ def test_run_forecast_pipeline_returns_adjusted_game_output() -> None:
     assert outputs[0].baseline_probability_pct == 48.0
     assert outputs[0].predicted_probability_pct == 47.48
     assert outputs[0].estimated_edge_pct == -0.52
-    assert "quote-mid adjustment -0.52 pts" in outputs[0].rationale
+    assert outputs[0].surfaced_edge_pct == 0.0
+    assert outputs[0].recommendation == "pass"
+    assert "edge below 1.0 pt surfacing floor" in outputs[0].rationale
+
+
+def test_run_forecast_pipeline_marks_larger_medium_confidence_edge_as_research_only() -> None:
+    outputs = run_forecast_pipeline([
+        make_market(yes_bid=0.55, yes_ask=0.60, no_bid=0.40, no_ask=0.45, liquidity=30.0, volume=30.0)
+    ])
+    assert len(outputs) == 1
+    assert outputs[0].predicted_probability_pct == 58.75
+    assert outputs[0].estimated_edge_pct == -1.25
+    assert outputs[0].surfaced_edge_pct == -1.25
+    assert outputs[0].confidence == "medium"
+    assert outputs[0].recommendation == "research_only"
 
 
 def test_select_game_markets_keeps_only_game_markets() -> None:
@@ -59,6 +73,7 @@ def test_run_forecast_pipeline_withholds_non_game_markets() -> None:
     assert len(outputs) == 1
     assert outputs[0].predicted_probability_pct is None
     assert outputs[0].confidence == "needs_data"
+    assert outputs[0].recommendation == "withheld"
     assert "withholds non-game NBA markets" in outputs[0].rationale
 
 
@@ -69,6 +84,7 @@ def test_run_forecast_pipeline_withholds_game_market_without_implied_probability
     assert outputs[0].predicted_probability_pct is None
     assert outputs[0].market_implied_probability_pct is None
     assert outputs[0].confidence == "needs_data"
+    assert outputs[0].recommendation == "withheld"
     assert "baseline forecast withheld" in outputs[0].rationale
 
 
@@ -77,5 +93,18 @@ def test_run_forecast_pipeline_fails_soft_when_quote_inputs_are_incomplete() -> 
     assert len(outputs) == 1
     assert outputs[0].predicted_probability_pct == 48.0
     assert outputs[0].estimated_edge_pct == 0.0
+    assert outputs[0].surfaced_edge_pct == 0.0
     assert outputs[0].confidence == "low"
+    assert outputs[0].recommendation == "pass"
     assert "no complete game quote inputs for heuristic adjustment" in outputs[0].rationale
+
+
+def test_run_forecast_pipeline_withholds_extreme_implied_probability_markets() -> None:
+    outputs = run_forecast_pipeline([make_market(yes_bid=0.98, yes_ask=0.98, no_bid=0.01, no_ask=0.02)])
+    assert len(outputs) == 1
+    assert outputs[0].predicted_probability_pct is None
+    assert outputs[0].baseline_probability_pct == 98.0
+    assert outputs[0].market_implied_probability_pct == 98.0
+    assert outputs[0].confidence == "guardrail"
+    assert outputs[0].recommendation == "withheld"
+    assert "extreme guardrail" in outputs[0].rationale

@@ -6,6 +6,9 @@ from kelshi_trade.forecasting.schemas import FeatureRow, ForecastOutput
 
 class BaselinePaperForecaster(Forecaster):
     SUPPORTED_MARKET_TYPE = "game"
+    EDGE_SURFACING_FLOOR_PCT = 1.0
+    EXTREME_IMPLIED_LOW_PCT = 3.0
+    EXTREME_IMPLIED_HIGH_PCT = 97.0
 
     def fit(self, rows: list[FeatureRow]) -> None:
         return None
@@ -20,7 +23,9 @@ class BaselinePaperForecaster(Forecaster):
                 baseline_probability_pct=row.market_implied_probability_pct,
                 market_implied_probability_pct=row.market_implied_probability_pct,
                 estimated_edge_pct=None,
+                surfaced_edge_pct=None,
                 confidence="needs_data",
+                recommendation="withheld",
                 rationale=(
                     "paper-only baseline withholds non-game NBA markets; "
                     "game-winner model only"
@@ -37,8 +42,28 @@ class BaselinePaperForecaster(Forecaster):
                 baseline_probability_pct=None,
                 market_implied_probability_pct=None,
                 estimated_edge_pct=None,
+                surfaced_edge_pct=None,
                 confidence="needs_data",
+                recommendation="withheld",
                 rationale="no game-market implied probability available; baseline forecast withheld",
+            )
+
+        if self._is_extreme_implied_probability(implied):
+            return ForecastOutput(
+                market_id=row.market_id,
+                matchup=row.matchup,
+                market_type=row.market_type,
+                predicted_probability_pct=None,
+                baseline_probability_pct=implied,
+                market_implied_probability_pct=implied,
+                estimated_edge_pct=None,
+                surfaced_edge_pct=None,
+                confidence="guardrail",
+                recommendation="withheld",
+                rationale=(
+                    "game-market implied probability hit extreme guardrail; "
+                    "forecast withheld for review friendliness"
+                ),
             )
 
         predicted = implied
@@ -57,6 +82,13 @@ class BaselinePaperForecaster(Forecaster):
 
         confidence = self._confidence(row, quote_mid)
         edge = round(predicted - implied, 2)
+        surfaced_edge = self._surface_edge(edge)
+        recommendation = self._recommendation(surfaced_edge, confidence)
+        if surfaced_edge == 0.0 and edge != 0.0:
+            rationale_bits.append(
+                f"edge below {self.EDGE_SURFACING_FLOOR_PCT:.1f} pt surfacing floor; treat as noise for paper review"
+            )
+
         return ForecastOutput(
             market_id=row.market_id,
             matchup=row.matchup,
@@ -65,7 +97,9 @@ class BaselinePaperForecaster(Forecaster):
             baseline_probability_pct=implied,
             market_implied_probability_pct=implied,
             estimated_edge_pct=edge,
+            surfaced_edge_pct=surfaced_edge,
             confidence=confidence,
+            recommendation=recommendation,
             rationale="; ".join(rationale_bits),
         )
 
@@ -99,6 +133,21 @@ class BaselinePaperForecaster(Forecaster):
         if spread_bps <= 300 and liquidity >= 20 and volume >= 20:
             return "medium"
         return "low"
+
+    def _surface_edge(self, edge: float) -> float:
+        if abs(edge) < self.EDGE_SURFACING_FLOOR_PCT:
+            return 0.0
+        return edge
+
+    def _recommendation(self, surfaced_edge: float, confidence: str) -> str:
+        if surfaced_edge == 0.0:
+            return "pass"
+        if confidence == "medium":
+            return "research_only"
+        return "watch"
+
+    def _is_extreme_implied_probability(self, implied: float) -> bool:
+        return implied <= self.EXTREME_IMPLIED_LOW_PCT or implied >= self.EXTREME_IMPLIED_HIGH_PCT
 
     def _clamp_probability_pct(self, value: float) -> float:
         return round(max(1.0, min(99.0, value)), 2)

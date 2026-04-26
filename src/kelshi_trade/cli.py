@@ -202,7 +202,14 @@ def report_kalshi_nba_forecast(
     forecasts = run_forecast_pipeline(allowed)
     shown = 0
     for forecast in forecasts:
-        typer.echo(f"{forecast.matchup} | {forecast.market_id} | {forecast.market_type} | predicted={forecast.predicted_probability_pct if forecast.predicted_probability_pct is not None else 'needs_data'} | implied={forecast.market_implied_probability_pct if forecast.market_implied_probability_pct is not None else 'n/a'} | confidence={forecast.confidence} | rationale={forecast.rationale}")
+        typer.echo(
+            f"{forecast.matchup} | {forecast.market_id} | {forecast.market_type} | "
+            f"predicted={forecast.predicted_probability_pct if forecast.predicted_probability_pct is not None else 'needs_data'} | "
+            f"implied={forecast.market_implied_probability_pct if forecast.market_implied_probability_pct is not None else 'n/a'} | "
+            f"edge={forecast.estimated_edge_pct if forecast.estimated_edge_pct is not None else 'n/a'} | "
+            f"surfaced_edge={forecast.surfaced_edge_pct if forecast.surfaced_edge_pct is not None else 'n/a'} | "
+            f"recommendation={forecast.recommendation} | confidence={forecast.confidence} | rationale={forecast.rationale}"
+        )
         shown += 1
         if shown >= top:
             break
