@@ -97,3 +97,21 @@ class LiveNBAMarket:
     status: str
     is_bundle: bool
     raw: dict
+
+
+@dataclass(slots=True)
+class PregameOddsSnapshot:
+    capture_timestamp_utc: str
+    minutes_before_start: int
+    market_id: str
+    event_ticker: str
+    matchup: str
+    market_type: str
+    start_time_utc: str
+    implied_probability_pct: float | None
+    yes_bid: float | None
+    yes_ask: float | None
+    no_bid: float | None
+    no_ask: float | None
+    liquidity: float
+    volume: float

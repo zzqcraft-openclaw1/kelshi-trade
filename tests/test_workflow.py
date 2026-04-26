@@ -2,7 +2,9 @@ import json
 from pathlib import Path
 
 from kelshi_trade.config import Settings
-from kelshi_trade.workflow import doctor_ok, format_run_id, run_doctor, run_nba_paper_review
+from datetime import datetime, timezone
+
+from kelshi_trade.workflow import doctor_ok, format_run_id, run_doctor, run_nba_paper_review, run_nba_pregame_baseline_capture
 
 
 RAW_SNAPSHOT = {
@@ -88,3 +90,23 @@ def test_run_nba_paper_review_requires_paper_only(tmp_path) -> None:
         assert "paper-only guardrail failed" in str(exc)
     else:  # pragma: no cover
         raise AssertionError("expected paper-only failure")
+
+
+def test_run_nba_pregame_baseline_capture_creates_review_friendly_artifacts(tmp_path) -> None:
+    settings = make_settings(tmp_path)
+
+    artifacts = run_nba_pregame_baseline_capture(
+        settings,
+        now=datetime(2026, 4, 13, 3, 30, tzinfo=timezone.utc),
+        target_minutes_before_tip=30,
+        window_minutes=15,
+    )
+
+    manifest = json.loads(Path(artifacts.manifest_path).read_text(encoding="utf-8"))
+    assert manifest["counts"]["pregame_game_markets_captured"] == 1
+    assert artifacts.captured_count == 1
+    assert Path(artifacts.json_path).exists()
+    assert Path(artifacts.csv_path).exists()
+    note_text = Path(artifacts.note_path).read_text(encoding="utf-8")
+    assert "Utah Jazz @ Los Angeles Lakers" in note_text
+    assert "30m before start" in note_text

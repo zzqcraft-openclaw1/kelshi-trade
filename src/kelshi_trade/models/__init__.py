@@ -1,3 +1,3 @@
-from .entities import Fill, LiveNBAMarket, Market, Order, Position, Quote, ResearchMarket, Signal
+from .entities import Fill, LiveNBAMarket, Market, Order, Position, PregameOddsSnapshot, Quote, ResearchMarket, Signal
 
-__all__ = ["Market", "Quote", "Signal", "Order", "Fill", "Position", "ResearchMarket", "LiveNBAMarket"]
+__all__ = ["Market", "Quote", "Signal", "Order", "Fill", "Position", "ResearchMarket", "LiveNBAMarket", "PregameOddsSnapshot"]

@@ -34,7 +34,26 @@ kelshi-trade status
 kelshi-trade capture-quotes
 kelshi-trade run-strategy
 kelshi-trade show-portfolio
+kelshi-trade capture-nba-pregame-baseline
 ```
+
+## NBA pregame baseline capture
+
+Capture a research-only snapshot of NBA game-winner odds near T-30m before tip:
+
+```bash
+kelshi-trade capture-nba-pregame-baseline --target-minutes-before-tip 30 --window-minutes 15
+```
+
+Artifacts land in the existing run structure under `reports/runs/<run_id>/nba_paper_review/` and `var/runs/<run_id>/`.
+
+Key outputs:
+
+- `nba_pregame_game_odds.json`
+- `nba_pregame_game_odds.csv`
+- `nba_pregame_game_odds_note.md`
+
+The markdown note file is meant to be linked or pasted into daily notes and post-game review.
 
 ## MVP roadmap
 

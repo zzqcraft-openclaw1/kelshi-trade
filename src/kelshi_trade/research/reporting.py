@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import csv
+import json
+from dataclasses import asdict
 from pathlib import Path
 
+from kelshi_trade.models import PregameOddsSnapshot
 from kelshi_trade.research.nba_markets import CandidateReview, render_top_candidates_markdown
 
 
@@ -73,3 +76,66 @@ def export_summary_by_game(summary: dict[str, dict[str, CandidateReview]], outpu
         lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
     return str(path)
+
+
+def export_pregame_odds_snapshots(snapshots: list[PregameOddsSnapshot], output_dir: str) -> tuple[str, str, str]:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    json_path = out / "nba_pregame_game_odds.json"
+    csv_path = out / "nba_pregame_game_odds.csv"
+    note_path = out / "nba_pregame_game_odds_note.md"
+
+    json_path.write_text(
+        json.dumps([asdict(snapshot) for snapshot in snapshots], indent=2),
+        encoding="utf-8",
+    )
+
+    fieldnames = [
+        "capture_timestamp_utc",
+        "minutes_before_start",
+        "matchup",
+        "market_id",
+        "event_ticker",
+        "market_type",
+        "start_time_utc",
+        "implied_probability_pct",
+        "yes_bid",
+        "yes_ask",
+        "no_bid",
+        "no_ask",
+        "liquidity",
+        "volume",
+    ]
+    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for snapshot in snapshots:
+            writer.writerow(asdict(snapshot))
+
+    lines = [
+        "# NBA Pregame Game-Win Odds Note",
+        "",
+        "Research-only baseline snapshot for post-game review and daily notes.",
+        "Paste or link this section into the daily note when you want the pre-tip reference line.",
+        "",
+    ]
+    if not snapshots:
+        lines.append("- No NBA game-winner markets were inside the configured tipoff window.")
+    else:
+        for snapshot in snapshots:
+            lines.extend(
+                [
+                    f"## {snapshot.matchup}",
+                    f"- Capture: {snapshot.capture_timestamp_utc} ({snapshot.minutes_before_start}m before start)",
+                    f"- Start: {snapshot.start_time_utc}",
+                    f"- Market: `{snapshot.market_id}`",
+                    f"- Implied win probability: {snapshot.implied_probability_pct if snapshot.implied_probability_pct is not None else 'n/a'}%",
+                    f"- YES bid / ask: {snapshot.yes_bid if snapshot.yes_bid is not None else 'n/a'} / {snapshot.yes_ask if snapshot.yes_ask is not None else 'n/a'}",
+                    f"- NO bid / ask: {snapshot.no_bid if snapshot.no_bid is not None else 'n/a'} / {snapshot.no_ask if snapshot.no_ask is not None else 'n/a'}",
+                    "",
+                ]
+            )
+
+    note_path.write_text("\n".join(lines), encoding="utf-8")
+    return str(json_path), str(csv_path), str(note_path)

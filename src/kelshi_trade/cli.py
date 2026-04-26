@@ -23,6 +23,7 @@ from kelshi_trade.research.nba_markets import (
 from kelshi_trade.research.reporting import export_best_per_game_report, export_split_review_reports, export_summary_by_game
 from kelshi_trade.risk.rules import RiskLimits
 from kelshi_trade.workflow import doctor_ok, run_doctor, run_nba_paper_review
+from kelshi_trade.workflow import run_nba_pregame_baseline_capture
 
 app = typer.Typer(help="kelshi-trade CLI")
 
@@ -249,6 +250,40 @@ def run_nba_review_command(
     if artifacts.forecast_path:
         typer.echo(f"forecast={artifacts.forecast_path}")
     typer.echo("paper-only research run complete")
+
+
+@app.command("capture-nba-pregame-baseline")
+def capture_nba_pregame_baseline(
+    refresh_snapshot: bool = False,
+    limit: int = 100,
+    pages: int = 1,
+    target_minutes_before_tip: int = 30,
+    window_minutes: int = 15,
+) -> None:
+    """Capture NBA game-winner odds near tipoff for paper-only post-game review."""
+    settings = get_settings()
+    try:
+        artifacts = run_nba_pregame_baseline_capture(
+            settings,
+            refresh_snapshot=refresh_snapshot,
+            limit=limit,
+            pages=pages,
+            target_minutes_before_tip=target_minutes_before_tip,
+            window_minutes=window_minutes,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    typer.echo(f"run_id={artifacts.run_id}")
+    typer.echo(f"reports_dir={artifacts.reports_dir}")
+    typer.echo(f"state_dir={artifacts.state_dir}")
+    typer.echo(f"raw_snapshot={artifacts.raw_snapshot_path}")
+    typer.echo(f"manifest={artifacts.manifest_path}")
+    typer.echo(f"pregame_json={artifacts.json_path}")
+    typer.echo(f"pregame_csv={artifacts.csv_path}")
+    typer.echo(f"pregame_note={artifacts.note_path}")
+    typer.echo(f"captured_count={artifacts.captured_count}")
+    typer.echo("paper-only pregame baseline capture complete")
 
 
 if __name__ == "__main__":

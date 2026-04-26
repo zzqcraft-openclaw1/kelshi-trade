@@ -138,3 +138,31 @@ def test_run_nba_paper_review_command_writes_run_artifacts(tmp_path, monkeypatch
     manifest_line = next(line for line in result.stdout.splitlines() if line.startswith("manifest="))
     manifest_path = Path(manifest_line.split("=", 1)[1])
     assert manifest_path.exists()
+
+
+def test_capture_nba_pregame_baseline_command_writes_artifacts(tmp_path, monkeypatch) -> None:
+    raw_json = tmp_path / "var" / "kalshi_raw_markets.json"
+    raw_json.parent.mkdir(parents=True, exist_ok=True)
+    raw_json.write_text(json.dumps(MINIMAL_RAW_SNAPSHOT), encoding="utf-8")
+    monkeypatch.setenv("KELSHI_PAPER_ONLY", "true")
+    monkeypatch.setenv("KELSHI_DB_PATH", str(tmp_path / "var" / "kelshi_trade.db"))
+    monkeypatch.setenv("KELSHI_REPORTS_PATH", str(tmp_path / "reports"))
+    monkeypatch.setenv("KELSHI_VAR_PATH", str(tmp_path / "var"))
+    monkeypatch.setenv("KELSHI_RAW_SNAPSHOT_PATH", str(raw_json))
+
+    result = runner.invoke(
+        app,
+        [
+            "capture-nba-pregame-baseline",
+            "--target-minutes-before-tip",
+            "30",
+            "--window-minutes",
+            "15",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "paper-only pregame baseline capture complete" in result.stdout
+    note_line = next(line for line in result.stdout.splitlines() if line.startswith("pregame_note="))
+    note_path = Path(note_line.split("=", 1)[1])
+    assert note_path.exists()

@@ -11,15 +11,18 @@ from kelshi_trade.forecasting.pipeline import run_forecast_pipeline, select_game
 from kelshi_trade.research.nba_markets import (
     best_by_game_and_type,
     best_candidate_per_game,
+    build_pregame_odds_snapshot,
     dedupe_live_candidates,
     filter_candidates_by_start_window,
     filter_live_nba_markets,
     load_live_nba_markets,
+    select_markets_near_tipoff,
     score_live_market_for_review,
     split_candidates_by_type,
 )
 from kelshi_trade.research.reporting import (
     export_best_per_game_report,
+    export_pregame_odds_snapshots,
     export_review_report,
     export_split_review_reports,
     export_summary_by_game,
@@ -43,6 +46,19 @@ class RunArtifacts:
     report_paths: list[str]
     forecast_path: str | None
     summary_counts: dict[str, int]
+
+
+@dataclass(slots=True)
+class PregameCaptureArtifacts:
+    run_id: str
+    reports_dir: str
+    state_dir: str
+    raw_snapshot_path: str
+    manifest_path: str
+    json_path: str
+    csv_path: str
+    note_path: str
+    captured_count: int
 
 
 @dataclass(slots=True)
@@ -270,4 +286,87 @@ def run_nba_paper_review(
         report_paths=report_paths,
         forecast_path=forecast_path,
         summary_counts=manifest["counts"],
+    )
+
+
+def run_nba_pregame_baseline_capture(
+    settings: Settings,
+    *,
+    refresh_snapshot: bool = False,
+    limit: int = 100,
+    pages: int = 1,
+    target_minutes_before_tip: int = 30,
+    window_minutes: int = 15,
+    now: datetime | None = None,
+) -> PregameCaptureArtifacts:
+    if not settings.paper_only:
+        raise ValueError(PAPER_ONLY_FAILURE)
+
+    capture_time = now or utc_timestamp()
+    prepared = prepare_run_directories(settings, now=capture_time)
+    snapshot_path, snapshot_source = acquire_snapshot(
+        settings,
+        prepared.snapshot_path,
+        refresh=refresh_snapshot,
+        limit=limit,
+        pages=pages,
+    )
+
+    markets = load_live_nba_markets(str(snapshot_path))
+    allowed, blocked = filter_live_nba_markets(markets)
+    selected = select_markets_near_tipoff(
+        allowed,
+        now=capture_time,
+        target_minutes_before_tip=target_minutes_before_tip,
+        window_minutes=window_minutes,
+    )
+    snapshots = [build_pregame_odds_snapshot(market, capture_time=capture_time) for market in selected]
+    json_path, csv_path, note_path = export_pregame_odds_snapshots(snapshots, str(prepared.reports_dir))
+
+    manifest = {
+        "run_id": prepared.run_id,
+        "command": "kelshi-trade capture-nba-pregame-baseline",
+        "paper_only": settings.paper_only,
+        "environment": settings.environment,
+        "started_at_utc": prepared.started_at_utc,
+        "snapshot": {
+            "path": str(snapshot_path),
+            "source": snapshot_source,
+            "default_snapshot_path": str(settings.resolved_snapshot_path()),
+        },
+        "artifacts": {
+            "reports_dir": str(prepared.reports_dir),
+            "state_dir": str(prepared.state_dir),
+            "json_path": json_path,
+            "csv_path": csv_path,
+            "note_path": note_path,
+        },
+        "counts": {
+            "nba_markets_detected": len(markets),
+            "review_candidates_allowed": len(allowed),
+            "review_candidates_blocked": len(blocked),
+            "pregame_game_markets_captured": len(snapshots),
+        },
+        "filters": {
+            "refresh_snapshot": refresh_snapshot,
+            "limit": limit,
+            "pages": pages,
+            "target_minutes_before_tip": target_minutes_before_tip,
+            "window_minutes": window_minutes,
+        },
+        "research_only_notice": "Research and paper-review only. Not a live trading recommendation.",
+    }
+    manifest_path = prepared.state_dir / "pregame_capture_manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    return PregameCaptureArtifacts(
+        run_id=prepared.run_id,
+        reports_dir=str(prepared.reports_dir),
+        state_dir=str(prepared.state_dir),
+        raw_snapshot_path=str(snapshot_path),
+        manifest_path=str(manifest_path),
+        json_path=json_path,
+        csv_path=csv_path,
+        note_path=note_path,
+        captured_count=len(snapshots),
     )

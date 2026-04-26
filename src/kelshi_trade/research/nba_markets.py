@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from kelshi_trade.models import LiveNBAMarket, ResearchMarket
+from kelshi_trade.models import LiveNBAMarket, PregameOddsSnapshot, ResearchMarket
 
 
 @dataclass(slots=True)
@@ -289,6 +289,56 @@ def implied_probability_pct(market: LiveNBAMarket) -> float | None:
     if market.yes_bid and market.yes_bid > 0:
         return round(market.yes_bid * 100, 2)
     return None
+
+
+def parse_iso_utc(timestamp: str) -> datetime:
+    return datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+
+
+def select_markets_near_tipoff(
+    markets: list[LiveNBAMarket],
+    *,
+    now: datetime | None = None,
+    target_minutes_before_tip: int = 30,
+    window_minutes: int = 15,
+) -> list[LiveNBAMarket]:
+    anchor = now or datetime.now(timezone.utc)
+    lower = target_minutes_before_tip - window_minutes
+    upper = target_minutes_before_tip + window_minutes
+    selected: list[LiveNBAMarket] = []
+    for market in markets:
+        if market.market_type != "game":
+            continue
+        try:
+            start = parse_iso_utc(market.start_time_utc)
+        except ValueError:
+            continue
+        minutes_before_start = (start - anchor).total_seconds() / 60
+        if lower <= minutes_before_start <= upper:
+            selected.append(market)
+    return sorted(selected, key=lambda market: market.start_time_utc)
+
+
+def build_pregame_odds_snapshot(market: LiveNBAMarket, *, capture_time: datetime | None = None) -> PregameOddsSnapshot:
+    capture = capture_time or datetime.now(timezone.utc)
+    start = parse_iso_utc(market.start_time_utc)
+    minutes_before_start = int(round((start - capture).total_seconds() / 60))
+    return PregameOddsSnapshot(
+        capture_timestamp_utc=capture.isoformat().replace("+00:00", "Z"),
+        minutes_before_start=minutes_before_start,
+        market_id=market.market_id,
+        event_ticker=market.event_ticker,
+        matchup=market.matchup,
+        market_type=market.market_type,
+        start_time_utc=market.start_time_utc,
+        implied_probability_pct=implied_probability_pct(market),
+        yes_bid=market.yes_bid,
+        yes_ask=market.yes_ask,
+        no_bid=market.no_bid,
+        no_ask=market.no_ask,
+        liquidity=market.liquidity,
+        volume=market.volume,
+    )
 
 
 def score_live_market_for_review(market: LiveNBAMarket) -> CandidateReview:
